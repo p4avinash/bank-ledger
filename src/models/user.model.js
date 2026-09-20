@@ -1,4 +1,5 @@
 const mongoose = require("mongoose")
+const bcrypt = require("bcryptjs")
 
 const userSchema = new mongoose.Schema(
   {
@@ -22,13 +23,29 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Please create a password"],
       minLength: [6, "Password should be more than 6 characters"],
-      select: false,
+      select: false, // Don't fetch password while fetching user unless asked to fetch specifically
     },
   },
   {
     timestamps: true,
   },
 )
+
+// If password is changed, hash it before saving to db
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return
+  }
+
+  const hash = await bcrypt.hash(this.password, 10)
+  this.password = hash
+  return
+})
+
+// Creating a compare password method in schema for further use
+userSchema.methods.comparePassword = async function (password) {
+  return await bcrypt.compare(password, this.password)
+}
 
 const userModel = mongoose.model("user", userSchema)
 
